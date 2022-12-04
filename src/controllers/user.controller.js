@@ -1,16 +1,12 @@
 const e = require('express');
-const User = require('../schema/user.schema');
+const User = require('../schema/user.schema')
 
 module.exports.getUsersWithPostCount = async (req, res) => {
     try {
         //TODO: Implement this API
         var { page, limit } = req.query
-        var totalPages, nextPage
-        var hasNextPage = false
-        var hasPrevPage = false
-        var prevPage = null
-        var pagingCounter = page
-        var nextPage
+        limit = parseInt(limit)
+        page = parseInt(page)
         let query = [
             {
                 $lookup: {
@@ -31,34 +27,45 @@ module.exports.getUsersWithPostCount = async (req, res) => {
             },
 
         ]
+        const users = await User.aggregate(query)
 
-
-        if (page && limit) {
-
+        if (!(page && limit)) {
+            return res.status(200).json({
+                data: { users: users }
+            })
+        } else {
+            const totalDocs = users.length
+            var pagingCounter,totalPages,nextPage
+            var hasPrevPage =false
+            var hasNextPage = false
+            var prevPage = null
             query.push(
+                
                 {
                     $skip: (page - 1) * limit
                 },
                 {
                     $limit: limit
-                }
+                },
             )
-            const users = await User.aggregate(query)
-
+            
+            const Pusers = await User.aggregate(query)
+            console.log('users',Pusers)
+            pagingCounter=page
             if (limit >= users.length) {
                 totalPages = 1
                 prevPage = null
             } else {
                 totalPages = Math.ceil(users.length / limit)
-                if (page * limit < data.length) {
+                if (page * limit < users.length) {
                     hasNextPage = true
-                    nextPage = page++
+                    nextPage = page+1
                 } else {
                     hasNextPage = false
                     nextPage = null
                 }
 
-                if ((page - 1) * limit > 0) {
+                if ((page - 1) * limit > 1) {
                     prevPage = page - 1
                     hasPrevPage = true
                 } else {
@@ -67,27 +74,29 @@ module.exports.getUsersWithPostCount = async (req, res) => {
             }
             return res.status(200).json({
                 data: {
-                    users: users, pagination: {
-                        totalDocs: users.length,
-                        limit: limit,
-                        page: page,
-                        totalPages: totalPages,
-                        pagingCounter: pagingCounter,
-                        hasPrevPage: hasPrevPage,
-                        hasNextPage: hasNextPage,
-                        prevPage: prevPage,
-                        nextPage: nextPage
+                    users: Pusers, pagination: {
+                        totalDocs:totalDocs,
+                        limit:limit,
+                        page:page,
+                        totalPages:totalPages,
+                        pagingCounter:pagingCounter,
+                        hasPrevPage:hasPrevPage,
+                        hasNextPage:hasNextPage,
+                        prevPage:prevPage,
+                        nextPage:nextPage
                     }
                 }
             })
-        } else {
-            const users = await User.aggregate(query)
-            return res.status(200).json({
-                data: { users: users }
-            })
+
         }
 
     } catch (error) {
         res.send({ error: error.message });
     }
 }
+
+
+
+
+    //
+           
